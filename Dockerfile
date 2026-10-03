@@ -1,0 +1,135 @@
+FROM alpine:latest
+
+# Ref: https://github.com/STJr/Kart-Public/releases
+ARG RINGRACERS_VERSION=2.4
+ARG RINGRACERS_USER=ringracers
+ENV RINGRACERS_DIRECTORY=/usr/share/games/RingRacers
+ENV RINGRACERS_MODS_DIRECTORY=/home/${RINGRACERS_USER}/.ringracers/servermods
+# Usually 5029, but we don't want overlap with SRB2Kart. Also, it should be within range of IANA's Dynamic / Private Port Ranges. 
+ENV RINGRACERS_PORT_FWD=50291 
+
+# https://github.com/KartKrewDev/RingRacers/releases/download/v2.4/Dr.Robotnik.s-Ring-Racers-v2.4-Assets.zip
+# Ref: https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=ringracers-data
+RUN set -ex \
+    && apk add --no-cache --virtual .build-deps curl \
+    && mkdir -p /ringracers-data \
+    && curl -L -o /tmp/ringracers-v${RINGRACERS_VERSION//./}-Assets.zip https://github.com/KartKrewDev/RingRacers/releases/download/v${RINGRACERS_VERSION}/Dr.Robotnik.s-Ring-Racers-v${RINGRACERS_VERSION}-Assets.zip \
+    && unzip -d /ringracers-data /tmp/ringracers-v${RINGRACERS_VERSION//./}-Assets.zip \
+    && find /ringracers-data \
+    && find /ringracers-data/models -type d -exec chmod 0755 {} \; \
+    && mkdir -p /usr/share/games \
+    && mv /ringracers-data $RINGRACERS_DIRECTORY \
+    && apk del .build-deps
+
+# Ref: https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=srb2kart
+RUN set -ex \
+    && apk add --no-cache --virtual .build-deps \
+        bash \
+        build-base \
+        cmake \ 
+        curl-dev \
+        curl-static \
+        gcc \
+        git \
+        gzip \
+        libc-dev \
+        libogg \
+        libogg-dev \
+        libpng-dev \
+        libpng-static \
+        libvorbis \
+        libvorbis-dev \
+        libvpx \ 
+        libvpx-dev \
+        libyuv-dev \
+        libyuv-static \
+        make \
+        nghttp2-static \
+        ninja \ 
+        ninja-build \
+        openssl-libs-static \
+        opus \
+        opus-dev \
+        sdl2_mixer-dev \
+        sdl2-dev \
+        upx \
+        zlib-dev \
+        zlib-static \
+    && git clone --depth=1 -b v${RINGRACERS_VERSION} https://github.com/KartKrewDev/RingRacers.git /src/ringracers \
+    && (cd /src/ringracers \
+        && mkdir -p ./build \
+        && cd ./build \
+        && cmake --preset ninja-release .. \
+        && cd .. \
+        && cmake --build --preset=ninja-release) \
+    && find /src/ringracers -name ringracers_v${RINGRACERS_VERSION} \
+    && cp /src/ringracers/build/ninja-release/bin/ringracers_v${RINGRACERS_VERSION} /usr/bin/ringracers_v${RINGRACERS_VERSION} \
+    # Symlink to short-hand version number. Could be used to manage multiple versions..
+    && ln -s /usr/bin/ringracers_v${RINGRACERS_VERSION} /usr/bin/ringracers \ 
+    && apk del .build-deps \
+    && rm -rf /src/ringracers
+
+RUN apk add --no-cache \
+        coreutils \
+        shadow \
+        bash \
+        gettext
+
+# Add script that auto-loads mods from specific `servermods` folder, se RINGRACERS_MODS_DIRECTORY
+COPY ./start-ringracers-server.sh /usr/bin/start-ringracers-server.sh
+RUN set -ex \
+    && chmod a+x /usr/bin/start-ringracers-server.sh
+
+RUN mkdir -p /data
+
+RUN apk add --no-cache \
+        curl-dev \
+        curl-static \
+        libpng-dev \
+        libpng-static \
+        sdl2_mixer-dev \
+        sdl2-dev \
+        sdl2 \
+        nginx \
+        zip
+
+# User setup
+RUN adduser -D -u 10001 -g 10001 ${RINGRACERS_USER} \
+    && ln -s /data /home/${RINGRACERS_USER}/.ringracers \
+    && chown -R ${RINGRACERS_USER} /data
+
+
+# Direct download location definition
+COPY ./direct-download.conf /etc/nginx/conf.d/direct-download.conf.template
+RUN mkdir -p /var/www/html
+RUN chown -R ${RINGRACERS_USER}:www-data /etc/nginx/conf.d/direct-download.conf.template
+RUN ln -s /data/servermods /var/www/html/repo
+RUN chown -h ${RINGRACERS_USER} /var/www/html/repo
+
+# Disable nginx user and set up for use as non-root user
+RUN mkdir -p /var/cache/nginx && chown -R ${RINGRACERS_USER} /var/cache/nginx && \
+    mkdir -p /var/log/nginx && chown -R ${RINGRACERS_USER} /var/log/nginx && \
+    mkdir -p /var/lib/nginx && chown -R ${RINGRACERS_USER} /var/lib/nginx && \
+    mkdir -p /run/nginx && touch /run/nginx/nginx.pid && chown -R ${RINGRACERS_USER} /run/nginx/nginx.pid && \
+    chown -R ${RINGRACERS_USER} /etc/nginx && \
+    chmod -R 777 /etc/nginx/conf.d
+
+RUN sed -i 's/user nginx;/#user nginx;/g' /etc/nginx/nginx.conf
+
+# Don't forget to remove the default
+# RUN rm /etc/nginx/conf.d/default.conf
+
+# User context switch
+USER ${RINGRACERS_USER}
+RUN mkdir -p ${RINGRACERS_MODS_DIRECTORY}
+WORKDIR ${RINGRACERS_DIRECTORY}
+
+ENV FASTDL_PORT=8421
+
+# Port definition
+EXPOSE $RINGRACERS_PORT_FWD/udp
+EXPOSE $FASTDL_PORT/tcp
+
+STOPSIGNAL SIGINT
+ENTRYPOINT ["start-ringracers-server.sh"]
+CMD ["-dedicated"]
