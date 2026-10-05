@@ -8,7 +8,7 @@ services:
     user: 10001:10001
     ports:
       - 50291:50291/udp
-      - 8421:80
+      - 8421:8421
     volumes:
       - ./ringdata:/data:z,U
     logging:

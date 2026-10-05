@@ -1,8 +1,10 @@
 servername "${SERVER_NAME}"
 password "${SERVER_PASSWORD}"
+server_contact "${SERVER_CONTACT}"
 
 advertise ${SERVER_ADVERTISE}
 
-motd "${SERVER_MOTD}"
-server_contact "${SERVER_CONTACT}"
+http_source "http://127.0.0.1:8421/repo"
 
+
+map -random

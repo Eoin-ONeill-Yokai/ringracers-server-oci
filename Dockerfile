@@ -124,10 +124,10 @@ RUN adduser -D -u 10001 -g 10001 ${RINGRACERS_USER} \
 
 
 # Direct download location definition
-COPY ./direct-download.conf /etc/nginx/conf.d/direct-download.conf.template
+COPY ./direct-download.conf.template /etc/nginx/http.d/direct-download.conf.template
 RUN mkdir -p /var/www/html
-RUN chown -R ${RINGRACERS_USER}:www-data /etc/nginx/conf.d/direct-download.conf.template
-RUN ln -s /data/servermods /var/www/html/repo
+RUN chown -R ${RINGRACERS_USER}:www-data /etc/nginx/http.d/direct-download.conf.template
+RUN ln -s /data/addons /var/www/html/repo
 RUN chown -h ${RINGRACERS_USER} /var/www/html/repo
 
 # Disable nginx user and set up for use as non-root user
@@ -136,12 +136,12 @@ RUN mkdir -p /var/cache/nginx && chown -R ${RINGRACERS_USER} /var/cache/nginx &&
     mkdir -p /var/lib/nginx && chown -R ${RINGRACERS_USER} /var/lib/nginx && \
     mkdir -p /run/nginx && touch /run/nginx/nginx.pid && chown -R ${RINGRACERS_USER} /run/nginx/nginx.pid && \
     chown -R ${RINGRACERS_USER} /etc/nginx && \
-    chmod -R 777 /etc/nginx/conf.d
+    chmod -R 777 /etc/nginx/http.d
 
 RUN sed -i 's/user nginx;/#user nginx;/g' /etc/nginx/nginx.conf
 
 # Don't forget to remove the default
-# RUN rm /etc/nginx/conf.d/default.conf
+RUN rm /etc/nginx/http.d/default.conf
 
 # User context switch
 USER ${RINGRACERS_USER}

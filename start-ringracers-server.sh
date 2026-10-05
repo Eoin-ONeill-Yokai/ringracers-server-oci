@@ -12,7 +12,7 @@ echo "Mods active:\
 $MODS"
 
 echo "Starting NGINX for FastDL"
-envsubst < /etc/nginx/conf.d/direct-download.conf.template > /etc/nginx/conf.d/direct-download.conf
+envsubst < /etc/nginx/http.d/direct-download.conf.template > /etc/nginx/http.d/direct-download.conf
 nginx
 
 # If there's no user password, we should just generate one for the user..
