@@ -4,9 +4,16 @@ FROM alpine:latest
 ARG RINGRACERS_VERSION=2.4
 ARG RINGRACERS_USER=ringracers
 ENV RINGRACERS_DIRECTORY=/usr/share/games/RingRacers
-ENV RINGRACERS_MODS_DIRECTORY=/home/${RINGRACERS_USER}/.ringracers/servermods
+ENV RINGRACERS_CONFIG_DIRECTORY=/home/${RINGRACERS_USER}/.ringracers
+ENV RINGRACERS_MODS_DIRECTORY=${RINGRACERS_CONFIG_DIRECTORY}/addons
 # Usually 5029, but we don't want overlap with SRB2Kart. Also, it should be within range of IANA's Dynamic / Private Port Ranges. 
-ENV RINGRACERS_PORT_FWD=50291 
+ENV RINGRACERS_PORT_FWD=50291
+ENV RINGRACERSWADDIR=${RINGRACERS_DIRECTORY}
+
+ENV SERVER_NAME="^5Ring Racers ^4Docker ^6Image"
+ENV SERVER_MOTD="As seen on GitHub and GitLab!"
+ENV SERVER_CONTACT="Matrix Space: https://matrix.to/#/#galaxy-raceways:matrix.org"
+ENV SERVER_ADVERTISE="No"
 
 # https://github.com/KartKrewDev/RingRacers/releases/download/v2.4/Dr.Robotnik.s-Ring-Racers-v2.4-Assets.zip
 # Ref: https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=ringracers-data
@@ -63,11 +70,14 @@ RUN set -ex \
         && cd .. \
         && cmake --build --preset=ninja-release) \
     && find /src/ringracers -name ringracers_v${RINGRACERS_VERSION} \
-    && cp /src/ringracers/build/ninja-release/bin/ringracers_v${RINGRACERS_VERSION} /usr/bin/ringracers_v${RINGRACERS_VERSION} \
+    && cp /src/ringracers/build/ninja-release/bin/ringracers_v${RINGRACERS_VERSION} ${RINGRACERS_DIRECTORY}/ringracers_v${RINGRACERS_VERSION} \
     # Symlink to short-hand version number. Could be used to manage multiple versions..
-    && ln -s /usr/bin/ringracers_v${RINGRACERS_VERSION} /usr/bin/ringracers \ 
+    && ln -s ${RINGRACERS_DIRECTORY}/ringracers_v${RINGRACERS_VERSION} ${RINGRACERS_DIRECTORY}/ringracers \
     && apk del .build-deps \
     && rm -rf /src/ringracers
+
+# Add RINGRACERS_DIRECTORY to path for easy reference...
+ENV PATH="$PATH:${RINGRACERS_DIRECTORY}"
 
 RUN apk add --no-cache \
         coreutils \
@@ -75,28 +85,42 @@ RUN apk add --no-cache \
         bash \
         gettext
 
-# Add script that auto-loads mods from specific `servermods` folder, se RINGRACERS_MODS_DIRECTORY
+# Add script that auto-loads mods from specific `addons` folder, see RINGRACERS_MODS_DIRECTORY
 COPY ./start-ringracers-server.sh /usr/bin/start-ringracers-server.sh
 RUN set -ex \
     && chmod a+x /usr/bin/start-ringracers-server.sh
+
+# Add a template for auto generating a default configuration based on environment variables..
+RUN mkdir -p /etc/ringracers/
+COPY ./ringserv.cfg.template /etc/ringracers/ringserv.cfg.template
 
 RUN mkdir -p /data
 
 RUN apk add --no-cache \
         curl-dev \
         curl-static \
+        libogg \
+        libogg-dev \
         libpng-dev \
         libpng-static \
+        libvorbis \
+        libvorbis-dev \
+        libvpx \ 
+        libvpx-dev \
+        nginx \
+        opus \
+        opus-dev \
+        sdl2 \
         sdl2_mixer-dev \
         sdl2-dev \
-        sdl2 \
-        nginx \
         zip
 
 # User setup
 RUN adduser -D -u 10001 -g 10001 ${RINGRACERS_USER} \
     && ln -s /data /home/${RINGRACERS_USER}/.ringracers \
-    && chown -R ${RINGRACERS_USER} /data
+    && chown -Rh ${RINGRACERS_USER} /home/${RINGRACERS_USER} \
+    && chown -R ${RINGRACERS_USER} /data \
+    && chown -R ${RINGRACERS_USER} ${RINGRACERS_DIRECTORY}
 
 
 # Direct download location definition

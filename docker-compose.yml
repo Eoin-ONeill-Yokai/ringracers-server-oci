@@ -1,12 +1,19 @@
 services:
-  kart-server:
-    image: docker.io/eoinoneill1991/srb2kart-server:v1.6
-    environment:
-      - SERVER_NAME="SRB2Kart Docker Image"
-      - EXTRA_RUN_ARGS=""
-      - TOTAL_SERVER_MOD_QUOTA=0.25G
+  ring-server:
+    image: ringracers-server:latest
+#    environment:
+#      - SERVER_NAME="^5Ring Racers ^4Docker ^6Image"
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    user: 10001:10001
     ports:
       - 50291:50291/udp
-      - 8420:80
+      - 8421:80
     volumes:
-      - ./kartdata:/data
+      - ./ringdata:/data:z,U
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1MB"
+        max-file: "10"
+

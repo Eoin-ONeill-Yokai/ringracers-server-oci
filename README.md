@@ -1,63 +1,47 @@
-# Sonic Robo Blast 2 Kart Server
+# Dr Robotnik's Ring Racers Server
 
-[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/rwanyoike/srb2kart-server)](https://hub.docker.com/r/rwanyoike/srb2kart-server)
-[![Docker Image Version](https://img.shields.io/docker/v/rwanyoike/srb2kart-server)](https://hub.docker.com/r/rwanyoike/srb2kart-server)
-[![Docker Image Size](https://img.shields.io/docker/image-size/rwanyoike/srb2kart-server)](https://hub.docker.com/r/rwanyoike/srb2kart-server)
-
-> Containerized version of SRB2Kart.
+> Containerized version of Ring Racers. Designed for Podman first, please convert to docker as you see fit.
 
 <p align="center">
   <img src="https://cdn.discordapp.com/attachments/298839130144505858/512450353124343808/unknown.png" width="100%" alt="SRB2Kart">
 </p>
 
-Containerized version of [SRB2Kart](https://mb.srb2.org/showthread.php?t=43708), a kart racing mod based on the 3D Sonic the Hedgehog fangame [Sonic Robo Blast 2](https://srb2.org/), based on a modified version of [Doom Legacy](http://doomlegacy.sourceforge.net/). You can use SRB2Kart to run a SRB2Kart dedicated netgame server given the proper config.
+Containerized version of [Ring Racers](https://www.kartkrew.org/), a kart racing total conversion mod of the game Doom. For more details on the project, please visit the previous hyperlink.
 
 ## Usage
 
-This will pull an image with SRB2Kart and start a dedicated netgame server on port `5029/udp`:
+If you're using podman compose, you can simply type the following:
 
-```bash
-docker run -it --name srb2kart -p 5029:5029/udp ghcr.io/eoin-oneill-yokai/srb2kart-server
 ```
+podman compose up -d && podman compose logs -f
+```
+
+This should be enough to kickstart your server with default configurations.
+
+
 
 ### Data Volume
 
-The `~/.srb2kart` directory is symlinked to `/data` in the container. You can bind-mount a SRB2Kart directory (with configuration files, mods, etc.) on the host machine to the `/data` directory inside the container. For example:
+The `~/.ringracers` directory is symlinked to `/data` in the container. You can bind-mount a RingRacers configuration directory (with configuration files, mods, etc.) on the host machine to the `/data` directory inside the container. E.G.
 
-
-```bash
-$ tree srb2kart-myserver/
-srb2kart-myserver
-├── addons
-│   ├── kl_xxx.pk3
-│   ├── kl_xxx.wad
-│   └── kr_xxx.pk3
-└── kartserv.cfg
-
-1 directory, 4 files
+```yaml
+# ...
+    volumes:
+    #z,U gives appropriate permissions according to podman mount arguments
+      - ./ringdata:/data:z,U
+# ...
 ```
 
-Additionally, all files found in `srb2kart-myserver/servermods` will automatically be loaded into the game exectubale and enabled on the server. 
+If you're having permission issues with the `ringdata` folder, which can prevent the server from booting correctly, you should to run the following command:
 
-> This directory must be accessible to the user account that is used to run SRB2Kart inside the container. If your host machine is run under *nix OS, SRB2Kart uses the non-root account `10001:10001` (`group:id`, respectively).
-
-```bash
-docker run --rm -it --name srb2kart \
-    -v <path to data directory>:/data \
-    -p <port on host>:5029/udp \
-    ghcr.io/eoin-oneill-yokai/srb2kart-server
+```
+podman unshare chown -R 10001:10001 ./ringdata
 ```
 
-## Manual Build
+User `10001` is the `ringracers` user. Podman uses uidmaps to change ids associated with a user inside the container, so user directories will generally be inaccessible from inside the container by design. `unshare` lets us give specific permission for this folder and all of its contents. 
 
-```bash
-git clone https://github.com/eoin-oneill-yokai/srb2kart-server-docker:master
-cd srb2kart-server-docker/
-docker build --build-arg "SRB2KART_VERSION=<version>" \
-    -t srb2kart-server:<version> .
-```
+All files found in `ringracers/addons` will automatically be loaded into the game executable and enabled on the server.  
 
-The build will clone the [STJr/Kart-Public](https://github.com/STJr/Kart-Public) repository and build the SRB2Kart executable, as well as download the data files (`/usr/share/games/SRB2Kart`) for SRB2Kart.
 
 ## License
 

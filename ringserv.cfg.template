@@ -1,0 +1,8 @@
+servername "${SERVER_NAME}"
+password "${SERVER_PASSWORD}"
+
+advertise ${SERVER_ADVERTISE}
+
+motd "${SERVER_MOTD}"
+server_contact "${SERVER_CONTACT}"
+
