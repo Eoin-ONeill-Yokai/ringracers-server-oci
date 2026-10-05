@@ -2,10 +2,6 @@
 
 > Containerized version of Ring Racers. Designed for Podman first, please convert to docker as you see fit.
 
-<p align="center">
-  <img src="https://cdn.discordapp.com/attachments/298839130144505858/512450353124343808/unknown.png" width="100%" alt="SRB2Kart">
-</p>
-
 Containerized version of [Ring Racers](https://www.kartkrew.org/), a kart racing total conversion mod of the game Doom. For more details on the project, please visit the previous hyperlink.
 
 ## Usage
