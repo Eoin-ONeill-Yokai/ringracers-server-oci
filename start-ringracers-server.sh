@@ -27,4 +27,15 @@ if [[ ! -f ${RINGRACERS_CONFIG_DIRECTORY}/ringserv.cfg ]]; then
     envsubst < /etc/ringracers/ringserv.cfg.template > ~/.ringracers/ringserv.cfg
 fi
 
+
+# Check wether to run SSH 
+if [ $RINGRACERS_ENABLE_SSHD == 1 ]; then
+    echo "Starting sshd service on port [${RINGRACERS_SSH_FWD}].."
+    [ ! -f ~/.ssh/sshd_config ] && cp /etc/ssh/sshd_config ~/.ssh/sshd_config
+    [ ! -f ~/.ssh/private/ssh_host_rsa_key ] && ssh-keygen -t rsa -f ~/.ssh/private/ssh_host_rsa_key -N ""
+    [ ! -f ~/.ssh/private/ssh_host_ecdsa_key ] && ssh-keygen -t ecdsa -f ~/.ssh/private/ssh_host_ecdsa_key -N ""
+    [ ! -f ~/.ssh/private/ssh_host_ed25519_key ] && ssh-keygen -t ed25519 -f ~/.ssh/private/ssh_host_ed25519_key -N ""
+    /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config -p ${RINGRACERS_SSH_FWD} &
+fi
+
 set -ex && ringracers $@ -port ${RINGRACERS_PORT_FWD} -room 33 ${EXTRA_RUN_ARGS} ${MOD_LOAD_CMD} ${EXTRA_MOD_FILES}

@@ -8,6 +8,8 @@ ENV RINGRACERS_CONFIG_DIRECTORY=/home/${RINGRACERS_USER}/.ringracers
 ENV RINGRACERS_MODS_DIRECTORY=${RINGRACERS_CONFIG_DIRECTORY}/addons
 # Usually 5029, but we don't want overlap with SRB2Kart. Also, it should be within range of IANA's Dynamic / Private Port Ranges. 
 ENV RINGRACERS_PORT_FWD=50291
+ENV RINGRACERS_ENABLE_SSHD=0
+ENV RINGRACERS_SSH_FWD=50293
 ENV RINGRACERSWADDIR=${RINGRACERS_DIRECTORY}
 
 ENV SERVER_NAME="^5Ring Racers ^4Docker ^6Image"
@@ -140,8 +142,37 @@ RUN mkdir -p /var/cache/nginx && chown -R ${RINGRACERS_USER} /var/cache/nginx &&
 
 RUN sed -i 's/user nginx;/#user nginx;/g' /etc/nginx/nginx.conf
 
-# Don't forget to remove the default
+# Don't forget to remove the default nginx
 RUN rm /etc/nginx/http.d/default.conf
+
+## Install rcon-cli -- this should give access to rcon commands internally. 
+RUN apk add --no-cache rcon-cli
+
+##  Setup for sftp.. We will use this for easy key-only remote file access. See sftp for more details.
+RUN apk add --no-cache openssh
+
+# Create and add user to group sftp
+RUN groupadd sftp && usermod -aG sftp ${RINGRACERS_USER}
+
+# Configure group user sftp
+RUN echo "Port ${RINGRACERS_SSH_FWD}" >> /etc/ssh/sshd_config  && \
+    echo "HostKey ~/.ssh/private/ssh_host_rsa_key" >> /etc/ssh/sshd_config && \
+    echo "HostKey ~/.ssh/private/ssh_host_ecdsa_key" >> /etc/ssh/sshd_config && \
+    echo "HostKey ~/.ssh/private/ssh_host_ed25519_key" >> /etc/ssh/sshd_config && \
+    echo "PidFile ~/sshd.pid" >> /etc/ssh/sshd_config && \
+    echo "Match Group sftp" >> /etc/ssh/sshd_config && \
+    echo "  X11Forwarding no" >> /etc/ssh/sshd_config && \
+    echo "  AllowTcpForwarding no" >> /etc/ssh/sshd_config && \
+# Cannot ChrootDirectory when running as user level. User level access should be ok though..
+#     echo "  ChrootDirectory ${RINGRACERS_CONFIG_DIRECTORY}" >> /etc/ssh/sshd_config && \
+# We actually might want non-sftp access as well... Maybe make this configurable?
+#     echo "  ForceCommand internal-sftp" >> /etc/ssh/sshd_config && \
+    echo "  PasswordAuthentication no" >> /etc/ssh/sshd_config
+
+# Symlink and give permission to keys...
+RUN ln -s /keys /home/${RINGRACERS_USER}/.ssh && \
+    mkdir -p /keys && \
+    chown -R ${RINGRACERS_USER} /keys
 
 # User context switch
 USER ${RINGRACERS_USER}
@@ -153,6 +184,7 @@ ENV FASTDL_PORT=8421
 # Port definition
 EXPOSE $RINGRACERS_PORT_FWD/udp
 EXPOSE $FASTDL_PORT/tcp
+EXPOSE $RINGRACERS_PORT_FWD/tcp
 
 STOPSIGNAL SIGINT
 ENTRYPOINT ["start-ringracers-server.sh"]

@@ -1,16 +1,18 @@
 services:
   ring-server:
     image: ringracers-server:latest
-#    environment:
-#      - SERVER_NAME="^5Ring Racers ^4Docker ^6Image"
+    environment:
+       - RINGRACERS_ENABLE_SSHD=1
     stdin_open: true # docker run -i
     tty: true        # docker run -t
     user: 10001:10001
     ports:
-      - 50291:50291/udp
-      - 8421:8421
+      - 50291:50291/udp # game port
+      - 50293:50293 # ssh
+      - 8421:8421 # FastDL port
     volumes:
       - ./ringdata:/data:z,U
+      - ./keys:/keys:z,U
     logging:
       driver: "json-file"
       options:
